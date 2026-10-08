@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F8FAFC; /* Light minimal background */
+            color: #334155;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #CBD5E1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94A3B8;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+
+        .pastel-ielts { background-color: #FFE4E6; color: #BE123C; } /* Rose */
+        .pastel-math { background-color: #E0F2FE; color: #0369A1; } /* Sky */
+        .pastel-physics { background-color: #F3E8FF; color: #7E22CE; } /* Purple */
+        .pastel-literature { background-color: #FEF3C7; color: #B45309; } /* Amber */
+        .pastel-other { background-color: #F1F5F9; color: #475569; } /* Slate */
+
+        .dot-ielts { background-color: #F43F5E; }
+        .dot-math { background-color: #0EA5E9; }
+        .dot-physics { background-color: #A855F7; }
+        .dot-literature { background-color: #F59E0B; }
+        .dot-other { background-color: #64748B; }
+
+        /* Toast animation */
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        .toast-enter { animation: slideInRight 0.3s ease-out forwards; }
+        .toast-exit { animation: fadeOut 0.3s ease-out forwards; }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8 flex flex-col items-center">
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
+
+    <!-- Main Container -->
+    <div class="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-12 gap-6 relative">
+        
+        <!-- Header / Background Decoration -->
+        <div class="absolute top-0 left-0 w-64 h-64 bg-pink-100 rounded-full mix-blend-multiply filter blur-3xl opacity-50 -z-10"></div>
+        <div class="absolute top-0 right-0 w-64 h-64 bg-blue-100 rounded-full mix-blend-multiply filter blur-3xl opacity-50 -z-10"></div>
+        
+        <header class="lg:col-span-12 flex justify-between items-center mb-2">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-800 tracking-tight">Study Space</h1>
+                <p class="text-sm text-slate-500 mt-1">Quản lý thời gian và bài tập hiệu quả</p>
+            </div>
+            <div class="flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm text-sm border border-slate-100">
+                <i class="ph-fill ph-user-circle text-xl text-slate-400"></i>
+                <span id="user-status" class="text-slate-600 font-medium">Đang kết nối...</span>
+            </div>
+        </header>
+
+        <!-- Left Column: Pomodoro & AI Assistant -->
+        <div class="lg:col-span-4 flex flex-col gap-6">
+            
+            <!-- Timer Section Replacement -->
+            <section class="glass-card rounded-3xl p-6 flex flex-col items-center text-center">
+                <div class="w-full flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold flex items-center gap-2 text-slate-700">
+                        <i class="ph-fill ph-timer text-rose-400"></i> Bấm giờ
+                    </h2>
+                    <button class="text-slate-400 hover:text-slate-600"><i class="ph ph-gear"></i></button>
+                </div>
+
+                <!-- Mode Switcher -->
+                <div class="flex bg-slate-100 p-1 rounded-full mb-6 text-sm font-medium w-full max-w-[250px]">
+                    <button id="mode-stopwatch" class="flex-1 py-1.5 rounded-full bg-white shadow-sm text-slate-800 transition-all">Đếm tiến</button>
+                    <button id="mode-countdown" class="flex-1 py-1.5 rounded-full text-slate-500 hover:text-slate-700 transition-all">Đếm ngược</button>
+                </div>
+
+                <!-- Input for Custom Countdown -->
+                <div id="countdown-inputs" class="hidden flex gap-3 mb-6 items-center justify-center">
+                    <div class="flex flex-col items-center">
+                        <input type="number" id="input-minutes" placeholder="0" class="w-16 bg-white border border-slate-200 rounded-xl px-2 py-2 text-center text-xl font-semibold focus:outline-none focus:border-rose-300 transition-colors" min="0" value="30">
+                        <span class="text-xs text-slate-400 mt-1">Phút</span>
+                    </div>
+                    <span class="text-2xl font-bold text-slate-300 pb-5">:</span>
+                    <div class="flex flex-col items-center">
+                        <input type="number" id="input-seconds" placeholder="0" class="w-16 bg-white border border-slate-200 rounded-xl px-2 py-2 text-center text-xl font-semibold focus:outline-none focus:border-rose-300 transition-colors" min="0" max="59" value="0">
+                        <span class="text-xs text-slate-400 mt-1">Giây</span>
+                    </div>
+                </div>
+
+                <!-- Timer Large Display -->
+                <div id="timer-display" class="text-6xl font-bold text-slate-800 mb-6 tracking-tighter tabular-nums">
+                    00:00
+                </div>
+
+                <div class="flex gap-4">
+                    <button id="timer-start" class="bg-slate-800 text-white px-8 py-3 rounded-full font-medium shadow-md hover:bg-slate-700 hover:shadow-lg transition-all active:scale-95">
+                        Bắt đầu
+                    </button>
+                    <button id="timer-reset" class="bg-slate-200 text-slate-600 px-4 py-3 rounded-full font-medium hover:bg-slate-300 transition-all active:scale-95">
+                        <i class="ph ph-arrow-counter-clockwise text-lg"></i>
+                    </button>
+                </div>
+            </section>
+
+            <!-- AI Assistant -->
+            <section class="glass-card rounded-3xl p-6 flex flex-col flex-1 min-h-[400px]">
+                <h2 class="text-lg font-semibold flex items-center gap-2 text-slate-700 mb-4">
+                    <i class="ph-fill ph-sparkle text-violet-500"></i> Trợ lý Học tập AI
+                </h2>
+                
+                <!-- Chat Window -->
+                <div id="ai-chat-window" class="flex-1 bg-white rounded-2xl border border-slate-100 p-4 overflow-y-auto mb-4 flex flex-col gap-3 text-sm h-64">
+                    <div class="flex gap-2 items-start">
+                        <div class="bg-violet-100 text-violet-600 p-2 rounded-full flex-shrink-0">
+                            <i class="ph-fill ph-robot"></i>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-2xl rounded-tl-none border border-slate-100 text-slate-700">
+                            Chào bạn! Tôi có thể giúp bạn phân bổ thời gian, ưu tiên task hoặc chia nhỏ công việc dài ngày. Hãy cho tôi biết bạn cần gì nhé!
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input Area -->
+                <div class="flex gap-2">
+                    <input type="text" id="ai-input" placeholder="Hỏi AI xếp lịch..." class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 transition-all">
+                    <button id="ai-send" class="bg-violet-500 text-white p-2 w-10 h-10 flex items-center justify-center rounded-xl hover:bg-violet-600 transition-all">
+                        <i class="ph-fill ph-paper-plane-right"></i>
+                    </button>
+                </div>
+            </section>
+        </div>
+
+        <!-- Right Column: Calendar & Tasks -->
+        <div class="lg:col-span-8 flex flex-col gap-6">
+            
+            <!-- Calendar View -->
+            <section class="glass-card rounded-3xl p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold flex items-center gap-2 text-slate-700">
+                        <i class="ph-fill ph-calendar-blank text-sky-500"></i> Lịch Deadline
+                    </h2>
+                    <div class="flex items-center gap-3 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
+                        <button id="cal-prev" class="text-slate-400 hover:text-slate-700 transition-colors"><i class="ph-bold ph-caret-left"></i></button>
+                        <span id="cal-month-year" class="text-sm font-semibold w-24 text-center">Tháng 10, 2026</span>
+                        <button id="cal-next" class="text-slate-400 hover:text-slate-700 transition-colors"><i class="ph-bold ph-caret-right"></i></button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-7 gap-2 text-center mb-2">
+                    <div class="text-xs font-semibold text-rose-400">CN</div>
+                    <div class="text-xs font-semibold text-slate-400">T2</div>
+                    <div class="text-xs font-semibold text-slate-400">T3</div>
+                    <div class="text-xs font-semibold text-slate-400">T4</div>
+                    <div class="text-xs font-semibold text-slate-400">T5</div>
+                    <div class="text-xs font-semibold text-slate-400">T6</div>
+                    <div class="text-xs font-semibold text-slate-400">T7</div>
+                </div>
+                
+                <div id="calendar-grid" class="grid grid-cols-7 gap-2 text-sm">
+                    <!-- Calendar days will be injected here -->
+                </div>
+            </section>
+
+            <!-- Task & Deadline Manager -->
+            <section class="glass-card rounded-3xl p-6 flex-1 flex flex-col min-h-[400px]">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                    <h2 class="text-lg font-semibold flex items-center gap-2 text-slate-700">
+                        <i class="ph-fill ph-list-checks text-emerald-500"></i> Danh sách Bài tập
+                    </h2>
+                    <div class="flex gap-2">
+                        <button id="btn-manage-categories" class="bg-slate-50 text-slate-600 border border-slate-200 px-3 py-2 rounded-full text-sm font-medium hover:bg-slate-100 transition-all flex items-center gap-1" title="Quản lý phân loại">
+                            <i class="ph-bold ph-palette"></i> Phân loại
+                        </button>
+                        <button id="btn-add-task" class="bg-emerald-50 text-emerald-600 border border-emerald-100 px-4 py-2 rounded-full text-sm font-medium hover:bg-emerald-100 transition-all flex items-center gap-1">
+                            <i class="ph-bold ph-plus"></i> Thêm Deadline
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Add Task Form (Hidden by default) -->
+                <div id="add-task-form" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-6 relative">
+                    <button id="btn-close-form" class="absolute top-3 right-3 text-slate-400 hover:text-slate-600"><i class="ph-bold ph-x"></i></button>
+                    <h3 class="text-sm font-semibold mb-3">Tạo Deadline mới</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                        <input type="text" id="task-title" placeholder="Tên công việc (Vd: Viết essay IELTS)" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-300">
+                        <input type="date" id="task-date" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-300">
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                        <input type="url" id="task-link" placeholder="Link tài liệu (Tùy chọn)" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-300">
+                        <select id="task-category" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-300">
+                            <!-- Categories will be injected here dynamically -->
+                        </select>
+                    </div>
+                    <button id="btn-save-task" class="w-full bg-emerald-500 text-white py-2 rounded-xl text-sm font-medium hover:bg-emerald-600 transition-all">Lưu Deadline</button>
+                </div>
+
+                <!-- Task List -->
+                <div id="task-list" class="flex-1 overflow-y-auto pr-2 flex flex-col gap-3">
+                    <!-- Tasks injected here -->
+                    <div class="text-center text-slate-400 text-sm mt-10">
+                        <i class="ph-thin ph-check-circle text-4xl mb-2"></i><br>
+                        Chưa có bài tập nào. Hãy thêm deadline nhé!
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Category Management Modal -->
+    <div id="category-modal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl relative">
+            <button id="btn-close-category-modal" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600"><i class="ph-bold ph-x text-lg"></i></button>
+            <h3 class="text-lg font-semibold mb-4 text-slate-800 flex items-center gap-2">
+                <i class="ph-fill ph-palette text-violet-500"></i> Quản lý phân loại
+            </h3>
+            
+            <div id="category-list-container" class="max-h-60 overflow-y-auto mb-4 flex flex-col gap-2 pr-1">
+                <!-- Categories injected here -->
+            </div>
+
+            <div class="border-t border-slate-100 pt-4">
+                <h4 class="text-sm font-medium text-slate-600 mb-2">Thêm loại mới</h4>
+                <div class="flex gap-2 items-center">
+                    <input type="color" id="new-cat-color" value="#8b5cf6" class="w-10 h-10 p-1 bg-white border border-slate-200 rounded-xl cursor-pointer">
+                    <input type="text" id="new-cat-name" placeholder="Tên loại môn học/dự án..." class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-violet-300">
+                    <button id="btn-save-category" class="bg-violet-500 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-violet-600 transition-all">Thêm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Environment Variables (Canvas provides these)
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'study-dashboard-demo';
+        const initialToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Initialize Firebase
+        let app, auth, db, userId, tasksRef, categoriesRef;
+        let tasksData = [];
+        let categoriesData = [];
+
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            initAuth();
+        } catch(e) {
+            console.error("Firebase init failed, using local mock data for preview:", e);
+            showToast("Đang chạy ở chế độ Preview (không lưu data)", "warning");
+            setupMockData();
+        }
+
+        async function initAuth() {
+            try {
+                if (initialToken) {
+                    await signInWithCustomToken(auth, initialToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                userId = auth.currentUser.uid;
+                document.getElementById('user-status').innerHTML = `<span class="w-2 h-2 rounded-full bg-green-500 inline-block mr-1"></span> Sẵn sàng`;
+                
+                // Set strictly allowed Firestore path
+                tasksRef = collection(db, 'artifacts', appId, 'users', userId, 'tasks');
+                categoriesRef = collection(db, 'artifacts', appId, 'users', userId, 'categories');
+                
+                fetchCategories();
+                fetchTasks();
+            } catch (error) {
+                console.error("Auth error:", error);
+                document.getElementById('user-status').innerText = "Lỗi kết nối";
+            }
+        }
+
+        function fetchTasks() {
+            if(!tasksRef) return;
+            // Rule 2: No complex queries. Fetch all and sort in JS memory.
+            const q = query(tasksRef);
+            onSnapshot(q, (snapshot) => {
+                tasksData = [];
+                snapshot.forEach((doc) => {
+                    tasksData.push({ id: doc.id, ...doc.data() });
+                });
+                
+                // Sort by date (closest first), then uncompleted first
+                tasksData.sort((a, b) => {
+                    if (a.completed !== b.completed) return a.completed ? 1 : -1;
+                    return new Date(a.date) - new Date(b.date);
+                });
+                
+                renderTasks();
+                renderCalendar();
+                checkDeadlines();
+            }, (error) => {
+                console.error("Firestore error:", error);
+            });
+        }
+
+        function fetchCategories() {
+            if(!categoriesRef) return;
+            const q = query(categoriesRef);
+            onSnapshot(q, (snapshot) => {
+                categoriesData = [];
+                snapshot.forEach((doc) => {
+                    categoriesData.push({ id: doc.id, ...doc.data() });
+                });
+                renderCategoryUI();
+                renderTasks();
+                renderCalendar();
+            }, (error) => {
+                console.error("Firestore category error:", error);
+            });
+        }
+
+        function setupMockData() {
+            // Fallback if Firebase not configured
+            categoriesData = [
+                { id: 'c1', name: 'IELTS', color: '#F43F5E' }, // Rose
+                { id: 'c2', name: 'Toán', color: '#0EA5E9' }, // Sky
+                { id: 'c3', name: 'Văn Học', color: '#F59E0B' }  // Amber
+            ];
+            tasksData = [
+                { id: '1', title: 'Writing Task 2 Essay', date: new Date().toISOString().split('T')[0], category: 'c1', link: 'https://docs.google.com', completed: false },
+                { id: '2', title: 'Giải đề Cương Toán', date: new Date(Date.now() + 86400000).toISOString().split('T')[0], category: 'c2', link: '', completed: false }
+            ];
+            renderCategoryUI();
+            renderTasks();
+            renderCalendar();
+        }
+
+        // --- Category Logic ---
+        const categoryModal = document.getElementById('category-modal');
+        const categoryListContainer = document.getElementById('category-list-container');
+        const taskCategorySelect = document.getElementById('task-category');
+
+        document.getElementById('btn-manage-categories').addEventListener('click', () => {
+            categoryModal.classList.remove('hidden');
+        });
+        document.getElementById('btn-close-category-modal').addEventListener('click', () => {
+            categoryModal.classList.add('hidden');
+        });
+
+        function renderCategoryUI() {
+            // Update Select dropdown
+            taskCategorySelect.innerHTML = categoriesData.length > 0 
+                ? categoriesData.map(c => `<option value="${c.id}">${c.name}</option>`).join('')
+                : `<option value="">Chưa có phân loại. Hãy tạo mới!</option>`;
+
+            // Update Manager List
+            if (categoriesData.length === 0) {
+                categoryListContainer.innerHTML = `<p class="text-sm text-slate-400 text-center py-4">Chưa có phân loại nào.</p>`;
+                return;
+            }
+
+            categoryListContainer.innerHTML = categoriesData.map(cat => `
+                <div class="flex items-center justify-between p-2 bg-slate-50 border border-slate-100 rounded-xl">
+                    <div class="flex items-center gap-3">
+                        <div class="w-6 h-6 rounded-full border border-slate-200 shadow-sm" style="background-color: ${cat.color}"></div>
+                        <span class="text-sm font-medium text-slate-700">${cat.name}</span>
+                    </div>
+                    <button onclick="deleteCategory('${cat.id}')" class="text-slate-400 hover:text-red-500 p-1 transition-colors">
+                        <i class="ph-fill ph-trash"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        document.getElementById('btn-save-category').addEventListener('click', async () => {
+            const name = document.getElementById('new-cat-name').value.trim();
+            const color = document.getElementById('new-cat-color').value;
+
+            if (!name) {
+                showToast("Vui lòng nhập tên phân loại!", "warning");
+                return;
+            }
+
+            const newCat = { name, color, createdAt: Date.now() };
+
+            if (categoriesRef) {
+                try {
+                    await addDoc(categoriesRef, newCat);
+                    document.getElementById('new-cat-name').value = '';
+                } catch(e) {
+                    showToast("Lỗi khi lưu phân loại", "error");
+                }
+            } else {
+                newCat.id = 'cat-' + Date.now();
+                categoriesData.push(newCat);
+                document.getElementById('new-cat-name').value = '';
+                renderCategoryUI();
+                renderTasks();
+                renderCalendar();
+            }
+        });
+
+        window.deleteCategory = async (catId) => {
+            // Check if category is used
+            const isUsed = tasksData.some(t => t.category === catId);
+            if (isUsed) {
+                showToast("Không thể xóa phân loại đang được sử dụng cho deadline!", "error");
+                return;
+            }
+
+            if (categoriesRef) {
+                await deleteDoc(doc(categoriesRef, catId));
+            } else {
+                categoriesData = categoriesData.filter(x => x.id !== catId);
+                renderCategoryUI();
+                renderTasks();
+                renderCalendar();
+            }
+        };
+
+        // --- Task UI Logic ---
+        const taskListEl = document.getElementById('task-list');
+        const formEl = document.getElementById('add-task-form');
+        
+        document.getElementById('btn-add-task').addEventListener('click', () => formEl.classList.remove('hidden'));
+        document.getElementById('btn-close-form').addEventListener('click', () => formEl.classList.add('hidden'));
+
+        document.getElementById('btn-save-task').addEventListener('click', async () => {
+            const title = document.getElementById('task-title').value.trim();
+            const date = document.getElementById('task-date').value;
+            const link = document.getElementById('task-link').value.trim();
+            const category = document.getElementById('task-category').value;
+
+            if (!title || !date) {
+                showToast("Vui lòng nhập tên và ngày deadline!", "error");
+                return;
+            }
+            if (!category) {
+                showToast("Vui lòng tạo ít nhất 1 phân loại trước trong mục 'Phân loại'!", "warning");
+                return;
+            }
+
+            const newTask = {
+                title, date, link, category, completed: false, createdAt: Date.now()
+            };
+
+            if (tasksRef) {
+                try {
+                    await addDoc(tasksRef, newTask);
+                    showToast("Đã thêm deadline thành công", "success");
+                    // Reset form
+                    document.getElementById('task-title').value = '';
+                    document.getElementById('task-date').value = '';
+                    document.getElementById('task-link').value = '';
+                    formEl.classList.add('hidden');
+                } catch(e) {
+                    showToast("Lỗi khi lưu dữ liệu", "error");
+                }
+            } else {
+                newTask.id = Date.now().toString();
+                tasksData.push(newTask);
+                renderTasks();
+                renderCalendar();
+                formEl.classList.add('hidden');
+            }
+        });
+
+        // Expose to window for inline onclick attributes
+        window.toggleTaskComplete = async (taskId, currentStatus) => {
+            if (tasksRef) {
+                await updateDoc(doc(tasksRef, taskId), { completed: !currentStatus });
+            } else {
+                const t = tasksData.find(x => x.id === taskId);
+                if(t) t.completed = !currentStatus;
+                renderTasks();
+                renderCalendar();
+            }
+        };
+
+        window.deleteTask = async (taskId) => {
+            if (tasksRef) {
+                await deleteDoc(doc(tasksRef, taskId));
+                showToast("Đã xóa công việc", "info");
+            } else {
+                tasksData = tasksData.filter(x => x.id !== taskId);
+                renderTasks();
+                renderCalendar();
+            }
+        };
+
+        function getCategoryData(catId) {
+            return categoriesData.find(c => c.id === catId) || { name: 'Đã xóa', color: '#94A3B8' };
+        }
+
+        function renderTasks() {
+            if (tasksData.length === 0) {
+                taskListEl.innerHTML = `
+                    <div class="text-center text-slate-400 text-sm mt-10">
+                        <i class="ph-thin ph-check-circle text-4xl mb-2"></i><br>
+                        Tuyệt vời! Bạn không có deadline nào.
+                    </div>`;
+                return;
+            }
+
+            taskListEl.innerHTML = '';
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            tasksData.forEach(task => {
+                const catData = getCategoryData(task.category);
+                const isOverdue = task.date < todayStr && !task.completed;
+                
+                // Format date to DD/MM
+                const d = new Date(task.date);
+                const dateDisp = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
+
+                let linkHtml = '';
+                if (task.link) {
+                    linkHtml = `<a href="${task.link}" target="_blank" class="ml-2 text-blue-500 hover:text-blue-700 hover:underline inline-flex items-center gap-1" title="Mở link đính kèm">
+                        <i class="ph ph-link"></i> Link
+                    </a>`;
+                }
+
+                const opacity = task.completed ? 'opacity-60' : '';
+                const textStrike = task.completed ? 'line-through text-slate-400' : 'text-slate-700 font-medium';
+                const overdueTag = isOverdue ? `<span class="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded ml-2 font-semibold">QUÁ HẠN</span>` : '';
+
+                // Generate dynamic pastel badge style (26 hex = ~15% opacity background)
+                const badgeStyle = `background-color: ${catData.color}26; color: ${catData.color};`;
+
+                const el = document.createElement('div');
+                el.className = `flex items-center justify-between p-3 rounded-2xl bg-white border border-slate-100 shadow-sm transition-all hover:shadow-md ${opacity}`;
+                el.innerHTML = `
+                    <div class="flex items-center gap-3 overflow-hidden">
+                        <button onclick="toggleTaskComplete('${task.id}', ${task.completed})" class="flex-shrink-0 text-xl transition-colors ${task.completed ? 'text-emerald-500' : 'text-slate-300 hover:text-emerald-400'}">
+                            <i class="ph-fill ${task.completed ? 'ph-check-circle' : 'ph-circle'}"></i>
+                        </button>
+                        <div class="flex flex-col truncate">
+                            <span class="${textStrike} truncate text-sm">
+                                ${task.title} ${overdueTag}
+                            </span>
+                            <div class="flex items-center text-xs mt-1">
+                                <span class="px-2 py-0.5 rounded-md font-semibold text-[10px] uppercase tracking-wider border border-transparent" style="${badgeStyle}; border-color: ${catData.color}40;">${catData.name}</span>
+                                <span class="ml-2 text-slate-500 flex items-center gap-1"><i class="ph ph-calendar-blank"></i> Hạn: ${dateDisp}</span>
+                                ${linkHtml}
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="deleteTask('${task.id}')" class="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors ml-2 flex-shrink-0">
+                        <i class="ph ph-trash text-lg"></i>
+                    </button>
+                `;
+                taskListEl.appendChild(el);
+            });
+        }
+
+        let currentCalDate = new Date();
+        
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            const monthYearText = document.getElementById('cal-month-year');
+            
+            const year = currentCalDate.getFullYear();
+            const month = currentCalDate.getMonth();
+            
+            monthYearText.textContent = `Tháng ${month + 1}, ${year}`;
+            grid.innerHTML = '';
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            // Empty slots
+            for (let i = 0; i < firstDay; i++) {
+                grid.innerHTML += `<div class="p-2"></div>`;
+            }
+            
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                
+                // Find pending tasks for this day
+                const dayTasks = tasksData.filter(t => t.date === dateStr && !t.completed);
+                let dotsHtml = '';
+                
+                if (dayTasks.length > 0) {
+                    const dots = dayTasks.slice(0, 3).map(t => {
+                        const catColor = getCategoryData(t.category).color;
+                        return `<div class="w-1.5 h-1.5 rounded-full" style="background-color: ${catColor}; box-shadow: 0 0 2px ${catColor}80"></div>`;
+                    }).join('');
+                    const extra = dayTasks.length > 3 ? `<div class="w-1.5 h-1.5 rounded-full bg-slate-300 text-[5px] text-white flex items-center justify-center">+</div>` : '';
+                    dotsHtml = `<div class="flex justify-center gap-0.5 mt-1">${dots}${extra}</div>`;
+                }
+
+                const isToday = today.getTime() === new Date(year, month, i).getTime();
+                const defaultClass = "aspect-square flex flex-col items-center justify-center rounded-xl text-sm relative";
+                
+                let dayStyle = "text-slate-600 hover:bg-slate-100";
+                if (isToday) {
+                    dayStyle = "bg-violet-100 text-violet-700 font-bold border border-violet-200 shadow-sm";
+                } else if (dayTasks.length > 0) {
+                    dayStyle = "text-slate-800 font-semibold bg-white border border-slate-200 shadow-sm";
+                }
+
+                grid.innerHTML += `
+                    <div class="${defaultClass} ${dayStyle}">
+                        <span>${i}</span>
+                        ${dotsHtml}
+                    </div>
+                `;
+            }
+        }
+
+        document.getElementById('cal-prev').addEventListener('click', () => {
+            currentCalDate.setMonth(currentCalDate.getMonth() - 1);
+            renderCalendar();
+        });
+        document.getElementById('cal-next').addEventListener('click', () => {
+            currentCalDate.setMonth(currentCalDate.getMonth() + 1);
+            renderCalendar();
+        });
+
+        let timerInterval;
+        let timerSeconds = 0;
+        let isRunning = false;
+        let timerMode = 'stopwatch'; // stopwatch, countdown
+
+        const displayEl = document.getElementById('timer-display');
+        const startBtn = document.getElementById('timer-start');
+        const resetBtn = document.getElementById('timer-reset');
+        
+        const btnStopwatch = document.getElementById('mode-stopwatch');
+        const btnCountdown = document.getElementById('mode-countdown');
+        const countdownInputs = document.getElementById('countdown-inputs');
+        const inputMinutes = document.getElementById('input-minutes');
+        const inputSeconds = document.getElementById('input-seconds');
+
+        function formatTime(totalSeconds) {
+            const h = Math.floor(totalSeconds / 3600);
+            const m = Math.floor((totalSeconds % 3600) / 60);
+            const s = totalSeconds % 60;
+            if (h > 0) return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+            return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+        }
+
+        function updateDisplay() {
+            displayEl.textContent = formatTime(timerSeconds);
+        }
+
+        function setTimerMode(mode) {
+            clearInterval(timerInterval);
+            isRunning = false;
+            timerMode = mode;
+            
+            startBtn.textContent = 'Bắt đầu';
+            startBtn.className = "bg-slate-800 text-white px-8 py-3 rounded-full font-medium shadow-md hover:bg-slate-700 transition-all active:scale-95";
+            
+            if (mode === 'stopwatch') {
+                btnStopwatch.className = "flex-1 py-1.5 rounded-full bg-white shadow-sm text-slate-800 transition-all font-medium";
+                btnCountdown.className = "flex-1 py-1.5 rounded-full text-slate-500 hover:text-slate-700 transition-all cursor-pointer";
+                
+                countdownInputs.classList.add('hidden');
+                displayEl.classList.remove('hidden');
+                
+                timerSeconds = 0;
+            } else {
+                btnCountdown.className = "flex-1 py-1.5 rounded-full bg-white shadow-sm text-slate-800 transition-all font-medium";
+                btnStopwatch.className = "flex-1 py-1.5 rounded-full text-slate-500 hover:text-slate-700 transition-all cursor-pointer";
+                
+                countdownInputs.classList.remove('hidden');
+                displayEl.classList.add('hidden');
+                
+                const m = parseInt(inputMinutes.value) || 0;
+                const s = parseInt(inputSeconds.value) || 0;
+                timerSeconds = (m * 60) + s;
+            }
+            updateDisplay();
+        }
+
+        btnStopwatch.addEventListener('click', () => setTimerMode('stopwatch'));
+        btnCountdown.addEventListener('click', () => setTimerMode('countdown'));
+
+        // Cập nhật lại số giây nội bộ ngay khi người dùng gõ vào ô input (chưa bấm Start)
+        [inputMinutes, inputSeconds].forEach(el => {
+            el.addEventListener('input', () => {
+                if(timerMode === 'countdown' && !isRunning) {
+                    const m = parseInt(inputMinutes.value) || 0;
+                    const s = parseInt(inputSeconds.value) || 0;
+                    timerSeconds = (m * 60) + s;
+                    updateDisplay();
+                }
+            });
+        });
+
+        startBtn.addEventListener('click', () => {
+            if (isRunning) {
+                // Tạm dừng
+                clearInterval(timerInterval);
+                isRunning = false;
+                startBtn.textContent = 'Tiếp tục';
+                startBtn.classList.replace('bg-rose-500', 'bg-slate-800');
+                startBtn.classList.replace('hover:bg-rose-600', 'hover:bg-slate-700');
+            } else {
+                // Bắt đầu
+                if (timerMode === 'countdown') {
+                    // Nếu đang ở màn hình nhập liệu, khi bấm Start sẽ giấu input đi và hiện chữ số lớn lên
+                    if (!isRunning && displayEl.classList.contains('hidden')) {
+                        countdownInputs.classList.add('hidden');
+                        displayEl.classList.remove('hidden');
+                    }
+                    // Kiểm tra xem thời gian có hợp lệ không
+                    if (timerSeconds <= 0) {
+                        const m = parseInt(inputMinutes.value) || 0;
+                        const s = parseInt(inputSeconds.value) || 0;
+                        timerSeconds = (m * 60) + s;
+                        if (timerSeconds <= 0) {
+                            showToast("Vui lòng nhập thời gian lớn hơn 0!", "warning");
+                            countdownInputs.classList.remove('hidden');
+                            displayEl.classList.add('hidden');
+                            return;
+                        }
+                    }
+                }
+                
+                isRunning = true;
+                startBtn.textContent = 'Tạm dừng';
+                startBtn.classList.replace('bg-slate-800', 'bg-rose-500');
+                startBtn.classList.replace('hover:bg-slate-700', 'hover:bg-rose-600');
+                
+                timerInterval = setInterval(() => {
+                    if (timerMode === 'stopwatch') {
+                        timerSeconds++;
+                        updateDisplay();
+                    } else {
+                        timerSeconds--;
+                        updateDisplay();
+                        if (timerSeconds <= 0) {
+                            clearInterval(timerInterval);
+                            isRunning = false;
+                            showToast("Đã hoàn thành thời gian đếm ngược!", "success");
+                            setTimerMode('countdown'); // Tự động trả về màn hình Set thời gian
+                        }
+                    }
+                }, 1000);
+            }
+        });
+
+        resetBtn.addEventListener('click', () => setTimerMode(timerMode));
+
+        const aiInput = document.getElementById('ai-input');
+        const aiSendBtn = document.getElementById('ai-send');
+        const chatWindow = document.getElementById('ai-chat-window');
+
+        function appendMessage(text, isUser = false) {
+            const div = document.createElement('div');
+            div.className = "flex gap-2 items-start";
+            
+            // Format basic markdown bolding
+            const formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+
+            if (isUser) {
+                div.classList.add('flex-row-reverse');
+                div.innerHTML = `
+                    <div class="bg-indigo-100 text-indigo-600 p-2 rounded-full flex-shrink-0">
+                        <i class="ph-fill ph-user"></i>
+                    </div>
+                    <div class="bg-indigo-500 text-white p-3 rounded-2xl rounded-tr-none text-sm max-w-[85%]">
+                        ${formattedText}
+                    </div>
+                `;
+            } else {
+                div.innerHTML = `
+                    <div class="bg-violet-100 text-violet-600 p-2 rounded-full flex-shrink-0">
+                        <i class="ph-fill ph-robot"></i>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-2xl rounded-tl-none border border-slate-100 text-slate-700 text-sm max-w-[85%]">
+                        ${formattedText}
+                    </div>
+                `;
+            }
+            chatWindow.appendChild(div);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        async function fetchAIResponse(userPrompt) {
+            // Provide context of current tasks to AI using dynamic category names
+            const pendingTasks = tasksData.filter(t => !t.completed).map(t => `${t.title} (hạn: ${t.date}, môn: ${getCategoryData(t.category).name})`).join('; ');
+            const systemPrompt = `Bạn là trợ lý học tập. Danh sách deadline chưa làm của người dùng hiện tại: [${pendingTasks}]. Hãy tư vấn ngắn gọn, súc tích (dưới 100 chữ), chia nhỏ công việc hoặc ưu tiên việc quan trọng. Giọng điệu thân thiện.`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userPrompt }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] }
+            };
+
+            const apiKey = ""; // Canvas provides this implicitly via environment
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                
+                if (result.candidates && result.candidates[0].content.parts[0].text) {
+                    return result.candidates[0].content.parts[0].text;
+                }
+                return "Xin lỗi, tôi đang không thể tư duy ngay lúc này. Hãy thử lại nhé!";
+            } catch (error) {
+                console.error("Gemini API Error:", error);
+                return "Đã xảy ra lỗi kết nối với máy chủ AI.";
+            }
+        }
+
+        aiSendBtn.addEventListener('click', async () => {
+            const text = aiInput.value.trim();
+            if(!text) return;
+            
+            appendMessage(text, true);
+            aiInput.value = '';
+            aiInput.disabled = true;
+            
+            // Temp loading state
+            const loadId = 'loading-' + Date.now();
+            const loadingDiv = document.createElement('div');
+            loadingDiv.id = loadId;
+            loadingDiv.className = "flex gap-2 items-start";
+            loadingDiv.innerHTML = `<div class="bg-violet-100 text-violet-600 p-2 rounded-full"><i class="ph-fill ph-spinner animate-spin"></i></div><div class="text-slate-400 text-xs mt-2 italic">AI đang suy nghĩ...</div>`;
+            chatWindow.appendChild(loadingDiv);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+
+            const aiResponse = await fetchAIResponse(text);
+            
+            document.getElementById(loadId).remove();
+            appendMessage(aiResponse, false);
+            aiInput.disabled = false;
+            aiInput.focus();
+        });
+
+        aiInput.addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') aiSendBtn.click();
+        });
+
+        let notifiedToday = false;
+        function checkDeadlines() {
+            if(notifiedToday) return;
+            const todayStr = new Date().toISOString().split('T')[0];
+            const dueToday = tasksData.filter(t => t.date === todayStr && !t.completed);
+            
+            if(dueToday.length > 0) {
+                showToast(`Bạn có ${dueToday.length} deadline cần hoàn thành trong hôm nay!`, 'warning');
+                notifiedToday = true;
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let bgClass = "bg-white border-slate-200 text-slate-700";
+            let icon = "<i class='ph-fill ph-info text-blue-500'></i>";
+            
+            if (type === 'success') {
+                icon = "<i class='ph-fill ph-check-circle text-emerald-500'></i>";
+            } else if (type === 'warning' || type === 'error') {
+                icon = "<i class='ph-fill ph-warning-circle text-rose-500'></i>";
+            }
+
+            toast.className = `toast-enter flex items-center gap-3 px-4 py-3 rounded-2xl shadow-lg border ${bgClass} min-w-[250px]`;
+            toast.innerHTML = `
+                <div class="text-xl">${icon}</div>
+                <div class="text-sm font-medium">${message}</div>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Auto remove
+            setTimeout(() => {
+                toast.classList.replace('toast-enter', 'toast-exit');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+    </script>
+</body>
+</html>
